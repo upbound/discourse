@@ -1,0 +1,45 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+  name: xcaches.discourse.upbound.io
+spec:
+  connectionSecretKeys:
+    - endpoint
+    - host
+  group: discourse.upbound.io
+  names:
+    kind: XCache
+    plural: xcaches
+  versions:
+  - name: v1alpha1
+    served: true
+    referenceable: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            properties:
+              parameters:
+                type: object
+                properties:
+                  region:
+                    type: string
+                  vpcId:
+                    type: string
+                  subnetIds:
+                    type: array
+                    items:
+                      type: string
+                  # TODO(hasheddan): remove when fixed in provider-aws.
+                  securityGroupIds:
+                    type: array
+                    items:
+                      type: string
+                required:
+                  - region
+                  - vpcId
+                  - subnetIds
+            required:
+              - parameters
