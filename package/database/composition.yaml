@@ -1,0 +1,108 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: xpostgres.discourse.upbound.io
+  labels:
+    provider: aws
+spec:
+  writeConnectionSecretsToNamespace: upbound-system
+  compositeTypeRef:
+    apiVersion: discourse.upbound.io/v1alpha1
+    kind: XDatabase
+  resources:
+    - name: rdsSubnetGroup
+      base:
+        apiVersion: rds.aws.upbound.io/v1beta1
+        kind: SubnetGroup
+        spec:
+          forProvider:
+            region: to-be-patched
+            description: Database subnets.
+            subnetIds:
+            - to-be-patched
+          deletionPolicy: Delete
+      patches:
+        - fromFieldPath: spec.parameters.region
+          toFieldPath: spec.forProvider.region
+        - fromFieldPath: spec.parameters.subnetIds
+          toFieldPath: spec.forProvider.subnetIds
+    - name: rdsInstance
+      base:
+        apiVersion: rds.aws.upbound.io/v1beta1
+        kind: Instance
+        spec:
+          forProvider:
+            region: to-be-patched
+            dbSubnetGroupNameSelector:
+              matchControllerRef: true
+            instanceClass: db.t3.micro
+            username: discourseadmin
+            skipFinalSnapshot: true
+            publiclyAccessible: false
+            engine: postgres
+            engineVersion: "12"
+            allocatedStorage: 20
+            vpcSecurityGroupIdSelector:
+              matchControllerRef: true
+          deletionPolicy: Delete
+      patches:
+        - fromFieldPath: spec.parameters.region
+          toFieldPath: spec.forProvider.region
+        - fromFieldPath: spec.parameters.passwordSecretRef.namespace
+          toFieldPath: spec.forProvider.passwordSecretRef.namespace
+        - fromFieldPath: spec.parameters.passwordSecretRef.name
+          toFieldPath: spec.forProvider.passwordSecretRef.name
+        - fromFieldPath: spec.parameters.passwordSecretRef.key
+          toFieldPath: spec.forProvider.passwordSecretRef.key
+        - fromFieldPath: "metadata.uid"
+          toFieldPath: "spec.writeConnectionSecretToRef.name"
+          transforms:
+            - type: string
+              string:
+                fmt: "%s-instance"
+        - fromFieldPath: spec.writeConnectionSecretToRef.namespace
+          toFieldPath: spec.writeConnectionSecretToRef.namespace
+      connectionDetails:
+        - fromFieldPath: "status.atProvider.endpoint"
+          name: endpoint
+        - fromFieldPath: "status.atProvider.address"
+          name: host
+        - fromFieldPath: "spec.forProvider.username"
+          name: username
+        - fromConnectionSecretKey: "attribute.password"
+          name: password
+    - name: securityGroup
+      base:
+        apiVersion: ec2.aws.upbound.io/v1beta1
+        kind: SecurityGroup
+        spec:
+          forProvider:
+            region: to-be-patched
+            vpcId: to-be-patched
+            name: discourse-database
+            description: Allow access to database
+          deletionPolicy: Delete
+      patches:
+        - fromFieldPath: spec.parameters.region
+          toFieldPath: spec.forProvider.region
+        - fromFieldPath: spec.parameters.vpcId
+          toFieldPath: spec.forProvider.vpcId
+    - name: securityGroupRule
+      base:
+        apiVersion: ec2.aws.upbound.io/v1beta1
+        kind: SecurityGroupRule
+        spec:
+          forProvider:
+            cidrBlocks:
+              - 0.0.0.0/0
+            protocol: tcp
+            region: to-be-patched
+            fromPort: 5432
+            toPort: 5432
+            type: ingress
+            securityGroupIdSelector:
+              matchControllerRef: true
+          deletionPolicy: Delete
+      patches:
+        - fromFieldPath: spec.parameters.region
+          toFieldPath: spec.forProvider.region

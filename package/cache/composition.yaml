@@ -1,0 +1,100 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: xredis.discourse.upbound.io
+  labels:
+    provider: aws
+spec:
+  writeConnectionSecretsToNamespace: upbound-system
+  compositeTypeRef:
+    apiVersion: discourse.upbound.io/v1alpha1
+    kind: XCache
+  resources:
+    - name: elasticacheSubnetGroup
+      base:
+        apiVersion: elasticache.aws.upbound.io/v1beta1
+        kind: SubnetGroup
+        spec:
+          forProvider:
+            region: to-be-patched
+            description: Cache subnets.
+            subnetIds:
+            - to-be-patched
+          deletionPolicy: Delete
+      patches:
+        - fromFieldPath: spec.parameters.region
+          toFieldPath: spec.forProvider.region
+        - fromFieldPath: spec.parameters.subnetIds
+          toFieldPath: spec.forProvider.subnetIds
+    - name: elasticacheCluster
+      base:
+        apiVersion: elasticache.aws.upbound.io/v1beta1
+        kind: Cluster
+        spec:
+          forProvider:
+            engine: redis
+            # NOTE(hasheddan): discourse requires at least 4.0.
+            engineVersion: "7.0"
+            nodeType: cache.t2.micro
+            numCacheNodes: 1
+            parameterGroupName: default.redis7
+            port: 6379
+            region: to-be-patched
+            subnetGroupNameSelector:
+              matchControllerRef: true
+            securityGroupIds:
+            - to-be-patched
+          deletionPolicy: Delete
+      patches:
+        - fromFieldPath: spec.parameters.region
+          toFieldPath: spec.forProvider.region
+        - fromFieldPath: spec.parameters.securityGroupIds
+          toFieldPath: spec.forProvider.securityGroupIds
+        - fromFieldPath: "metadata.uid"
+          toFieldPath: "spec.writeConnectionSecretToRef.name"
+          transforms:
+            - type: string
+              string:
+                fmt: "%s-cluster"
+        - fromFieldPath: spec.writeConnectionSecretToRef.namespace
+          toFieldPath: spec.writeConnectionSecretToRef.namespace
+      connectionDetails:
+        - fromFieldPath: "status.atProvider.cacheNodes[0].address"
+          name: endpoint
+        - fromFieldPath: "status.atProvider.cacheNodes[0].address"
+          name: host
+    - name: securityGroup
+      base:
+        apiVersion: ec2.aws.upbound.io/v1beta1
+        kind: SecurityGroup
+        spec:
+          forProvider:
+            region: to-be-patched
+            vpcId: to-be-patched
+            name: discourse-cache
+            description: Allow access to cache
+          deletionPolicy: Delete
+      patches:
+        - fromFieldPath: spec.parameters.region
+          toFieldPath: spec.forProvider.region
+        - fromFieldPath: spec.parameters.vpcId
+          toFieldPath: spec.forProvider.vpcId
+    - name: securityGroupRule
+      base:
+        apiVersion: ec2.aws.upbound.io/v1beta1
+        kind: SecurityGroupRule
+        spec:
+          forProvider:
+            cidrBlocks:
+              - 0.0.0.0/0
+            protocol: tcp
+            region: us-east-2
+            fromPort: 6379
+            toPort: 6379
+            type: ingress
+            securityGroupIdSelector:
+              matchControllerRef: true
+          deletionPolicy: Delete
+      patches:
+        - fromFieldPath: spec.parameters.region
+          toFieldPath: spec.forProvider.region
