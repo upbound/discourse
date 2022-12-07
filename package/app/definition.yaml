@@ -1,0 +1,62 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+  name: xapps.discourse.upbound.io
+spec:
+  group: discourse.upbound.io
+  names:
+    kind: XApp
+    plural: xapps
+  claimNames:
+    kind: App
+    plural: apps
+  versions:
+  - name: v1alpha1
+    served: true
+    referenceable: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            properties:
+              parameters:
+                type: object
+                properties:
+                  replicas:
+                    type: integer
+                    description: "Number of replicas to run."
+                  discourseSecretRef:
+                    type: object
+                    description: "A reference to the Secret object containing discourse credentials."
+                    properties:
+                      namespace:
+                        type: string
+                      name:
+                        type: string
+                    required:
+                    - namespace
+                    - name
+                  databaseSecretRef:
+                    type: object
+                    description: "A reference to the Secret object containing database credentials."
+                    properties:
+                      namespace:
+                        type: string
+                      name:
+                        type: string
+                    required:
+                    - namespace
+                    - name
+                  cacheSecretRef:
+                    type: object
+                    description: "A reference to the Secret object containing cache credentials."
+                    properties:
+                      namespace:
+                        type: string
+                      name:
+                        type: string
+                    required:
+                    - namespace
+                    - name

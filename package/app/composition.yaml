@@ -1,0 +1,96 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: xapps.discourse.upbound.io
+  labels:
+    provider: helm
+spec:
+  writeConnectionSecretsToNamespace: upbound-system
+  compositeTypeRef:
+    apiVersion: discourse.upbound.io/v1alpha1
+    kind: XApp
+  resources:
+    - name: helmRelease
+      base:
+        # NOTE(hasheddan): only default ProviderConfig currently supported.
+        apiVersion: helm.crossplane.io/v1beta1
+        kind: Release
+        spec:
+          rollbackLimit: 3
+          forProvider:
+            namespace: discourse
+            chart:
+              name: discourse
+              repository: https://charts.bitnami.com/bitnami
+              version: "9.0.4"
+            values:
+              # TODO(hasheddan): make configurable.
+              global:
+                storageClass: aws-ebs-volumes
+              postgresql:
+                enabled: false
+              redis:
+                enabled: false
+              externalDatabase:
+                port: 5432
+              externalRedis:
+                port: 6379
+              # TODO(hasheddan): make configurable.
+              discourse:
+                readinessProbe:
+                  enabled: false
+                resources:
+                  requests:
+                    cpu: 250m
+                    memory: 768Mi
+                  limits:
+                    cpu: 500m
+                    memory: 1Gi
+            set:
+              - name: externalDatabase.host
+                valueFrom:
+                  secretKeyRef:
+                    key: host
+              - name: externalDatabase.user
+                value: discourseadmin
+              - name: externalDatabase.password
+                valueFrom:
+                  secretKeyRef:
+                    key: password
+              - name: externalRedis.host
+                valueFrom:
+                  secretKeyRef:
+                    key: host
+              - name: auth.password
+                valueFrom:
+                  secretKeyRef:
+                    key: password
+              - name: replicaCount
+                value: 1
+      patches:
+        - fromFieldPath: metadata.labels
+          toFieldPath: metadata.labels
+        - fromFieldPath: metadata.annotations
+          toFieldPath: metadata.annotations
+        - fromFieldPath: spec.parameters.databaseSecretRef.namespace
+          toFieldPath: spec.forProvider.set[0].valueFrom.secretKeyRef.namespace
+        - fromFieldPath: spec.parameters.databaseSecretRef.name
+          toFieldPath: spec.forProvider.set[0].valueFrom.secretKeyRef.name
+        - fromFieldPath: spec.parameters.databaseSecretRef.namespace
+          toFieldPath: spec.forProvider.set[2].valueFrom.secretKeyRef.namespace
+        - fromFieldPath: spec.parameters.databaseSecretRef.name
+          toFieldPath: spec.forProvider.set[2].valueFrom.secretKeyRef.name
+        - fromFieldPath: spec.parameters.cacheSecretRef.namespace
+          toFieldPath: spec.forProvider.set[3].valueFrom.secretKeyRef.namespace
+        - fromFieldPath: spec.parameters.cacheSecretRef.name
+          toFieldPath: spec.forProvider.set[3].valueFrom.secretKeyRef.name
+        - fromFieldPath: spec.parameters.discourseSecretRef.namespace
+          toFieldPath: spec.forProvider.set[4].valueFrom.secretKeyRef.namespace
+        - fromFieldPath: spec.parameters.discourseSecretRef.name
+          toFieldPath: spec.forProvider.set[4].valueFrom.secretKeyRef.name
+        - fromFieldPath: spec.parameters.replicas
+          toFieldPath: spec.forProvider.set[5].value
+          transforms:
+            - type: convert
+              convert:
+                toType: string
