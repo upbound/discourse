@@ -1,0 +1,57 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+  name: xdatabases.discourse.upbound.io
+spec:
+  connectionSecretKeys:
+    - username
+    - password
+    - endpoint
+    - host
+  group: discourse.upbound.io
+  names:
+    kind: XDatabase
+    plural: xdatabases
+  versions:
+  - name: v1alpha1
+    served: true
+    referenceable: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            properties:
+              parameters:
+                type: object
+                properties:
+                  region:
+                    type: string
+                  vpcId:
+                    type: string
+                  subnetIds:
+                    type: array
+                    items:
+                      type: string
+                  passwordSecretRef:
+                    type: object
+                    description: "A reference to the Secret object containing database password"
+                    properties:
+                      namespace:
+                        type: string
+                      name:
+                        type: string
+                      key:
+                        type: string
+                    required:
+                    - namespace
+                    - name
+                    - key
+                required:
+                  - region
+                  - vpcId
+                  - subnetIds
+                  - passwordSecretRef
+            required:
+              - parameters
