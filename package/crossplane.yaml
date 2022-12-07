@@ -1,0 +1,25 @@
+apiVersion: meta.pkg.crossplane.io/v1
+kind: Configuration
+metadata:
+  name: discourse
+  annotations:
+    meta.crossplane.io/maintainer: Upbound <support@upbound.io>
+    meta.crossplane.io/source: github.com/upbound/discourse
+    meta.crossplane.io/license: Apache-2.0
+    meta.crossplane.io/description: |
+      Deploy Discourse using your favorite cloud provider's infrastructure. 
+    meta.crossplane.io/readme: |
+      This package deploys Discourse using external infrastructure on AWS (more
+      coming soon!). It composes a database and cache with networking primitives
+      such that your Discourse instance can securely communicate with
+      infrastructure in the same network. This is accomplished by leveraging the
+      resources offered by the [Upbound Official AWS
+      Provider](https://marketplace.upbound.io/providers/upbound/provider-aws).
+spec:
+  crossplane:
+    version: ">=v1.4.0-0"
+  dependsOn:
+    - provider: xpkg.upbound.io/upbound/provider-aws
+      version: ">=v0.21.0"
+    - provider: xpkg.upbound.io/crossplane-contrib/provider-helm
+      version: ">=v0.12.0"
